@@ -1,5 +1,6 @@
-import chromadb
 from pathlib import Path
+
+import chromadb
 
 
 def chunk_text(text, size, overlap):
@@ -17,11 +18,15 @@ def chunk_text(text, size, overlap):
         start += step
     return chunks
 
+SIZE = 120
+OVERLAP = 30
 
 client = chromadb.PersistentClient(path="chroma_db")
-collection = client.get_or_create_collection("notes")
+collection = client.get_or_create_collection(
+    "notes", metadata={"chunk_size": SIZE, "overlap": OVERLAP}
+)
 
-path = Path("Docs/30_Day_AI_Engineer_Sprint (1).md")
+path = Path("Docs/30_Day_AI_Engineer_Sprint.md")
 text = path.read_text(encoding="utf-8")
 print(len(text.split()), "words")
 
