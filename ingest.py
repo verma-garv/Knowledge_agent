@@ -30,7 +30,7 @@ path = Path("Docs/30_Day_AI_Engineer_Sprint.md")
 text = path.read_text(encoding="utf-8")
 print(len(text.split()), "words")
 
-chunks = chunk_text(text, 200, 40)
+chunks = chunk_text(text, 120, 30)
 
 collection.upsert(
     documents=chunks,

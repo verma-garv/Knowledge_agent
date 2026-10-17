@@ -4,6 +4,8 @@ from langchain.tools import tool
 client = chromadb.PersistentClient(path="chroma_db")
 collection = client.get_collection("notes")
 
+MAX_DISTANCE=1.815
+
 @tool
 def search_docs(query: str) -> str:
     """Search the user's own study notes: the 30-Day AI Engineer Sprint plan,
@@ -21,16 +23,17 @@ def search_docs(query: str) -> str:
     docs = results["documents"][0]
     metas = results["metadatas"][0]
     ids = results["ids"][0]
-
-    if not docs:
-        return "No matching passages found in the notes."
+    dis = results["distances"][0]
 
     parts = []
-    for doc, meta, cid in zip(docs, metas, ids):
-        parts.append(f"[source: {meta['source']} | chunk: {cid}]\n{doc}")
+    for doc, meta, cid, dist in zip(docs, metas, ids, dis):
+        parts.append(
+            f"[source: {meta['source']} | chunk: {cid} | distance:{dist:.2f}]\n{doc}"
+        )
+
+    if not parts:
+        return "No passages found in the notes."
     return "\n\n".join(parts)
 
 
 print(search_docs.invoke({"query": "What percentages does the daily rhythm split time into?"}))
-print("=====")
-print(search_docs.invoke({"query": "What is the capital of France?"}))
