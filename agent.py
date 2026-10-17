@@ -4,13 +4,22 @@ from typing import Literal
 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
-from langchain.messages import AnyMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain.messages import (
+    AIMessage,
+    AnyMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
+from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import Annotated, TypedDict
 
 from tools import search_docs  # CHANGED: your tool, not add/multiply
 
 load_dotenv()
+
+MAX_SEARCHES = 2
 
 provider = os.getenv("MODEL_PROVIDER", "groq")
 if provider == "ollama":
@@ -38,8 +47,9 @@ answer directly without calling the tool.
 match, but distance is only a hint. Read the passage itself and decide \
 whether it actually answers the question. A passage with a large distance \
 can still contain the answer, and a small distance does not guarantee it.
-4. If the first search returns passages that don't answer the question, try \
-once more with a differently worded query. After that, stop searching.
+4. If the first search doesn't answer the question, search once more using \
+different content words. Repeating the same words with different punctuation \
+does not count. After two searches, stop and answer.
 5. If the notes still don't answer it, say plainly that the notes don't \
 cover it. Never invent details about the plan, and never present a guess \
 as if it came from the notes.
@@ -51,10 +61,53 @@ class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], operator.add]
 
 
+def searches_this_turn(messages):
+    """Count tool results since the user's latest question."""
+    count = 0
+    for m in reversed(messages):
+        if isinstance(m, HumanMessage):
+            break
+        if isinstance(m, ToolMessage):
+            count += 1
+    return count
+
+
+def question_and_passages(messages):
+    """Pull out the latest user question and the search results since then."""
+    passages = []
+    question = ""
+    for m in reversed(messages):
+        if isinstance(m, ToolMessage):
+            passages.append(m.content)
+        elif isinstance(m, HumanMessage):
+            question = m.content
+            break
+    passages.reverse()
+    return question, "\n\n".join(passages)
+
+
 def llm_node(state: AgentState):
-    response = model_with_tools.invoke(
-        [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
-    )
+    if searches_this_turn(state["messages"]) >= MAX_SEARCHES:
+        question, passages = question_and_passages(state["messages"])
+        msgs = [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=(
+                f"Question: {question}\n\n"
+                f"Search results from the notes:\n{passages}\n\n"
+                "Answer using only these results. If they don't answer the "
+                "question, say the notes don't cover it. Do not search again."
+            )),
+        ]
+        try:
+            response = model.invoke(msgs)
+        except Exception as e:
+            print(f"[final-answer call failed: {e}]")
+            response = AIMessage(content=(
+                "I searched the notes twice and couldn't find a clear answer."
+            ))
+    else:
+        msgs = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+        response = model_with_tools.invoke(msgs)
     return {"messages": [response]}
 
 
@@ -91,9 +144,12 @@ if __name__ == "__main__":
         question = input("\nAsk (or 'quit'): ").strip()
         if question.lower() == "quit":
             break
-        result = agent.invoke(
-            {"messages": [HumanMessage(content=question)]},
-            config={"recursion_limit": 10},
-        )
-        for m in result["messages"]:
-            m.pretty_print()
+        try:
+            for step in agent.stream(
+                {"messages": [HumanMessage(content=question)]},
+                config={"recursion_limit": 10},
+                stream_mode="values",
+            ):
+                step["messages"][-1].pretty_print()
+        except GraphRecursionError:
+            print("\n[stopped: hit the step limit without a final answer]")
