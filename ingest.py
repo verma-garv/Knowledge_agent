@@ -3,19 +3,21 @@ from pathlib import Path
 import chromadb
 
 
-def chunk_text(text, size, overlap):
-    if overlap >= size:
-        raise ValueError("overlap must be smaller than size")
-    words = text.split()
+def chunk_lines(text, max_words=120, overlap_lines=2):
+    lines = [l for l in text.splitlines() if l.strip()]
     chunks = []
-    step = size - overlap
-    start = 0
-    while start < len(words):
-        chunk = words[start: start + size]
-        chunks.append(" ".join(chunk))
-        if start + size >= len(words):
-            break
-        start += step
+    current = []
+    count = 0
+    for line in lines:
+        n = len(line.split())
+        if current and count + n > max_words:
+            chunks.append("\n".join(current))
+            current = current[-overlap_lines:]          # carry the last lines over
+            count = sum(len(l.split()) for l in current)
+        current.append(line)
+        count += n
+    if current:
+        chunks.append("\n".join(current))
     return chunks
 
 SIZE = 120
@@ -30,7 +32,7 @@ path = Path("Docs/30_Day_AI_Engineer_Sprint.md")
 text = path.read_text(encoding="utf-8")
 print(len(text.split()), "words")
 
-chunks = chunk_text(text, 120, 30)
+chunks = chunk_lines(text, SIZE, OVERLAP)
 
 collection.upsert(
     documents=chunks,

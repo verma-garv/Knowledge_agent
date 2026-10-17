@@ -73,7 +73,9 @@ def searches_this_turn(messages):
 
 
 def question_and_passages(messages):
-    """Pull out the latest user question and the search results since then."""
+    """Answer using only these results. Back your answer with one exact quote
+    copied from the results, in quotation marks. If no quote in the results
+    answers the question, say the notes don't cover it. Do not search again."""
     passages = []
     question = ""
     for m in reversed(messages):
@@ -83,7 +85,7 @@ def question_and_passages(messages):
             question = m.content
             break
     passages.reverse()
-    return question, "\n\n".join(passages)
+    return question, "\n".join(passages)
 
 
 def llm_node(state: AgentState):
