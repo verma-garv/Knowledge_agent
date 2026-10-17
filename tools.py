@@ -36,4 +36,5 @@ def search_docs(query: str) -> str:
     return "\n\n".join(parts)
 
 
-print(search_docs.invoke({"query": "What percentages does the daily rhythm split time into?"}))
+if __name__ == "__main__":
+    print(search_docs.invoke({"query": "What should you do on Day 24?"}))
