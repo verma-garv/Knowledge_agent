@@ -32,7 +32,16 @@ path = Path("Docs/30_Day_AI_Engineer_Sprint.md")
 text = path.read_text(encoding="utf-8")
 print(len(text.split()), "words")
 
-chunks = chunk_lines(text, SIZE, OVERLAP)
+MAX_WORDS = 120
+OVERLAP_LINES = 2          # lines, not words
+
+chunks = chunk_lines(text, MAX_WORDS, OVERLAP_LINES)
+
+sizes = [len(c.split()) for c in chunks]
+print(f"{len(chunks)} chunks; words min/avg/max: "
+      f"{min(sizes)}/{round(sum(sizes) / len(sizes))}/{max(sizes)}")
+if sum(sizes) / len(sizes) > 1.5 * MAX_WORDS:
+    raise ValueError("chunks are much larger than MAX_WORDS: check chunker arguments")
 
 collection.upsert(
     documents=chunks,

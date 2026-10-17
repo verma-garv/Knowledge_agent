@@ -4,7 +4,7 @@ from langchain.tools import tool
 client = chromadb.PersistentClient(path="chroma_db")
 collection = client.get_collection("notes")
 
-MAX_DISTANCE=1.815
+MAX_DISTANCE=1.82
 
 @tool
 def search_docs(query: str) -> str:

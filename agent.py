@@ -26,7 +26,7 @@ if provider == "ollama":
     from langchain_ollama import ChatOllama
     model = ChatOllama(model="llama3.2:1b", temperature=0)
 else:
-    model = init_chat_model("openai/gpt-oss-120b", model_provider="groq", temperature=0)
+    model = init_chat_model("openai/gpt-oss-120b", model_provider="groq", temperature=0, max_tokens=1500)
 
 tools = [search_docs]                  # tomorrow: add the web search tool here
 tools_by_name = {t.name: t for t in tools}
@@ -101,12 +101,11 @@ def llm_node(state: AgentState):
             )),
         ]
         try:
+            print(f"[forced answer: {len(passages.split())} words of passages]")
             response = model.invoke(msgs)
         except Exception as e:
             print(f"[final-answer call failed: {e}]")
-            response = AIMessage(content=(
-                "I searched the notes twice and couldn't find a clear answer."
-            ))
+            response = AIMessage(content=f"[error] final-answer call failed: {e}")
     else:
         msgs = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
         response = model_with_tools.invoke(msgs)
