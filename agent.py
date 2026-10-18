@@ -15,7 +15,7 @@ from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import Annotated, TypedDict
 
-from tools import search_docs  # CHANGED: your tool, not add/multiply
+from tools import search_docs
 
 load_dotenv()
 
@@ -26,9 +26,9 @@ if provider == "ollama":
     from langchain_ollama import ChatOllama
     model = ChatOllama(model="llama3.2:1b", temperature=0)
 else:
-    model = init_chat_model("openai/gpt-oss-120b", model_provider="groq", temperature=0, max_tokens=1500)
+    model = init_chat_model("openai/gpt-oss-120b", model_provider="groq", temperature=0)
 
-tools = [search_docs]                  # tomorrow: add the web search tool here
+tools = [search_docs]
 tools_by_name = {t.name: t for t in tools}
 model_with_tools = model.bind_tools(tools)
 
@@ -54,8 +54,21 @@ does not count. After two searches, stop and answer.
 cover it. Never invent details about the plan, and never present a guess \
 as if it came from the notes.
 6. When you use the notes, say which source file the answer came from. \
-Keep answers short and in your own words rather than pasting long passages."""   # CHANGED: see the rules below
+Keep answers short and in your own words rather than pasting long passages."""
 
+
+FORCED_SYSTEM_PROMPT = """You answer questions about the user's own study notes, \
+using only the passages provided in the message.
+
+Rules:
+1. Use only the information in the passages. Do not use outside knowledge \
+and do not guess.
+2. Support your answer with one exact quote copied from the passages, in \
+quotation marks.
+3. If no passage answers the question, say plainly that the notes don't \
+cover it. Do not make up an answer.
+4. Name the source file the answer came from.
+5. Keep the answer short and in your own words."""
 
 class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], operator.add]
@@ -73,9 +86,7 @@ def searches_this_turn(messages):
 
 
 def question_and_passages(messages):
-    """Answer using only these results. Back your answer with one exact quote
-    copied from the results, in quotation marks. If no quote in the results
-    answers the question, say the notes don't cover it. Do not search again."""
+    """Return the latest user question and the search results gathered since it."""
     passages = []
     question = ""
     for m in reversed(messages):
@@ -92,12 +103,11 @@ def llm_node(state: AgentState):
     if searches_this_turn(state["messages"]) >= MAX_SEARCHES:
         question, passages = question_and_passages(state["messages"])
         msgs = [
-            SystemMessage(content=SYSTEM_PROMPT),
+            SystemMessage(content=FORCED_SYSTEM_PROMPT),
             HumanMessage(content=(
                 f"Question: {question}\n\n"
-                f"Search results from the notes:\n{passages}\n\n"
-                "Answer using only these results. If they don't answer the "
-                "question, say the notes don't cover it. Do not search again."
+                f"Passages:\n{passages}\n\n"
+                "Answer the question using only these passages."
             )),
         ]
         try:
