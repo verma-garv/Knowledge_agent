@@ -1,7 +1,10 @@
 from pathlib import Path
 
 import chromadb
+from chromadb.errors import NotFoundError
 
+MAX_WORDS = 120
+OVERLAP_LINES = 2
 
 def chunk_lines(text, max_words=120, overlap_lines=2):
     lines = [l for l in text.splitlines() if l.strip()]
@@ -20,20 +23,21 @@ def chunk_lines(text, max_words=120, overlap_lines=2):
         chunks.append("\n".join(current))
     return chunks
 
-SIZE = 120
-OVERLAP = 30
-
 client = chromadb.PersistentClient(path="chroma_db")
-collection = client.get_or_create_collection(
-    "notes", metadata={"chunk_size": SIZE, "overlap": OVERLAP}
+try:
+    client.delete_collection("notes")
+except NotFoundError:
+    pass
+
+collection = client.create_collection(
+    "notes", metadata={"max_words": MAX_WORDS, "overlap_lines": OVERLAP_LINES}
 )
 
 path = Path("Docs/30_Day_AI_Engineer_Sprint.md")
 text = path.read_text(encoding="utf-8")
 print(len(text.split()), "words")
 
-MAX_WORDS = 120
-OVERLAP_LINES = 2          # lines, not words
+
 
 chunks = chunk_lines(text, MAX_WORDS, OVERLAP_LINES)
 
