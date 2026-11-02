@@ -33,7 +33,7 @@ collection = client.create_collection(
     "notes", metadata={"max_words": MAX_WORDS, "overlap_lines": OVERLAP_LINES}
 )
 
-path = Path("Docs/30_Day_AI_Engineer_Sprint.md")
+path = Path("docs/30_Day_AI_Engineer_Sprint.md")
 text = path.read_text(encoding="utf-8")
 print(len(text.split()), "words")
 
