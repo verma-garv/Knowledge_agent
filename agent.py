@@ -15,7 +15,7 @@ from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import Annotated, TypedDict
 
-from tools import search_docs
+from tools import search_docs, web_search
 
 load_dotenv()
 
@@ -28,7 +28,7 @@ if provider == "ollama":
 else:
     model = init_chat_model("openai/gpt-oss-120b", model_provider="groq", temperature=0)
 
-tools = [search_docs]
+tools = [search_docs, web_search]
 tools_by_name = {t.name: t for t in tools}
 model_with_tools = model.bind_tools(tools)
 
