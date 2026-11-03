@@ -12,6 +12,7 @@ CASES = [
     ("Which free LLM API tiers does the sprint recommend?", ["groq"], True, None),
     ("What does the sprint say about Kubernetes?", ["Kubernetes"], True, None),
     ("What is the capital of France?", ["paris"], False, None),
+    ("What is the latest stable version of Python?", ["3.15"], True, None),
 ]
 
 

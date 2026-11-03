@@ -1,5 +1,6 @@
 import operator
 import os
+from datetime import date
 from typing import Literal
 
 from dotenv import load_dotenv
@@ -111,11 +112,16 @@ def question_and_passages(messages):
     return question, "\n".join(passages)
 
 
+def with_date(prompt):
+    today = f"{date.today():%B %d, %Y}"
+    return (f"Today's date is {today}. Your own knowledge may be out of " f"date for anything recent.\n\n" + prompt)
+
+
 def llm_node(state: AgentState):
     if searches_this_turn(state["messages"]) >= MAX_SEARCHES:
         question, passages = question_and_passages(state["messages"])
         msgs = [
-            SystemMessage(content=FORCED_SYSTEM_PROMPT),
+            SystemMessage(content=with_date(FORCED_SYSTEM_PROMPT)),
             HumanMessage(content=(
                 f"Question: {question}\n\n"
                 f"Passages:\n{passages}\n\n"
@@ -129,7 +135,7 @@ def llm_node(state: AgentState):
             print(f"[final-answer call failed: {e}]")
             response = AIMessage(content=f"[error] final-answer call failed: {e}")
     else:
-        msgs = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
+        msgs = [SystemMessage(content=with_date(SYSTEM_PROMPT))] + state["messages"]
         response = model_with_tools.invoke(msgs)
     return {"messages": [response]}
 
