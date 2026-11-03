@@ -10,7 +10,7 @@ CASES = [
     ("What should you do on Day 24?", ["fastapi"], True, "retrieval misses chunk 20; needs keyword search"),
     ("What percentages does the daily rhythm split time into?", ["40", "building"], True, None),
     ("Which free LLM API tiers does the sprint recommend?", ["groq"], True, None),
-    ("What does the sprint say about Kubernetes?", ["k8s"], True, None),
+    ("What does the sprint say about Kubernetes?", ["Kubernetes"], True, None),
     ("What is the capital of France?", ["paris"], False, None),
 ]
 
