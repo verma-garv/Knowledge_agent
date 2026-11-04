@@ -4,6 +4,7 @@ from datetime import date
 from typing import Literal
 
 from dotenv import load_dotenv
+from groq import BadRequestError
 from langchain.chat_models import init_chat_model
 from langchain.messages import (
     AIMessage,
@@ -136,7 +137,11 @@ def llm_node(state: AgentState):
             response = AIMessage(content=f"[error] final-answer call failed: {e}")
     else:
         msgs = [SystemMessage(content=with_date(SYSTEM_PROMPT))] + state["messages"]
-        response = model_with_tools.invoke(msgs)
+        try:
+            response = model_with_tools.invoke(msgs)
+        except Exception as e:
+            print(f"[tool call invalid: {e}]")
+            response = AIMessage(content=f"[error] tool call invalid: {e}")
     return {"messages": [response]}
 
 
