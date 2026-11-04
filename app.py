@@ -2,6 +2,7 @@ import streamlit as st
 from langchain.messages import AIMessage, HumanMessage
 
 from agent import agent, provider
+from ui_helpers import describe_steps
 
 MAX_HISTORY = 6
 
@@ -36,3 +37,8 @@ if question:
             st.write(answer)
             st.session_state.history.append(HumanMessage(content=question))
             st.session_state.history.append(AIMessage(content=answer))
+        steps = describe_steps(result["messages"][len(messages):])
+        if steps:
+            with st.expander("show search steps"):
+                for line in steps:
+                    st.text(line)
