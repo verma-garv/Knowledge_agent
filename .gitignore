@@ -1,5 +1,5 @@
 .env
 venv/
 chroma_db/
-Docs/
+
 __pycache__/
