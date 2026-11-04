@@ -1,0 +1,17 @@
+# Retrieval
+chromadb==1.5.9
+
+# Agent
+langchain==1.4.6
+langchain-groq==1.1.3
+langgraph==1.2.15
+python-dotenv==1.2.4
+
+# Web search tool
+tavily-python
+
+# UI
+streamlit==1.66.1
+
+# Optional: only needed when MODEL_PROVIDER=ollama
+langchain-ollama
