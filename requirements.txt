@@ -8,10 +8,10 @@ langgraph==1.2.15
 python-dotenv==1.2.4
 
 # Web search tool
-tavily-python
+tavily-python==0.8.5
 
 # UI
 streamlit==1.66.1
 
 # Optional: only needed when MODEL_PROVIDER=ollama
-langchain-ollama
+langchain-ollama==1.1.0
