@@ -12,9 +12,7 @@ MAX_DISTANCE=1.82
 
 @tool
 def search_docs(query: str) -> str:
-    """Search the user's own study notes: the 30-Day AI Engineer Sprint plan,
-    including the day-by-day schedule, projects, free resources, common beginner
-    mistakes, and what to learn after Day 30.
+    """Search the user's own study notes:
 
     Use this for questions about what the notes say or what the plan is. Do not
     use it for general knowledge or for current information from the web.

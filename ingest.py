@@ -5,6 +5,7 @@ from chromadb.errors import NotFoundError
 
 MAX_WORDS = 120
 OVERLAP_LINES = 2
+DOCS_DIR = Path("docs")
 
 def chunk_lines(text, max_words=120, overlap_lines=2):
     lines = [l for l in text.splitlines() if l.strip()]
@@ -33,23 +34,28 @@ collection = client.create_collection(
     "notes", metadata={"max_words": MAX_WORDS, "overlap_lines": OVERLAP_LINES}
 )
 
-path = Path("docs/ai_agents_notes.md")
-text = path.read_text(encoding="utf-8")
-print(len(text.split()), "words")
+files = sorted(p for p in DOCS_DIR.iterdir() if p.suffix in {".md", ".txt"})
+if not files:
+    raise SystemExit(f"No .md or .txt files found in {DOCS_DIR}/")
+total_chunks = 0
+for path in files:
+    text = path.read_text(encoding="utf-8")
+    chunks = chunk_lines(text, MAX_WORDS, OVERLAP_LINES)
+    if not chunks:
+        print(f"Skipping empty file: {path.name}")
+        continue
 
+    sizes = [len(c.split()) for c in chunks]
+    print(f"{path.name}: {len(text.split())} words, {len(chunks)} chunks; "
+        f"words min/avg/max {min(sizes)}/{round(sum(sizes) / len(sizes))}/{max(sizes)}")
+    if sum(sizes) / len(sizes) > 1.5 * MAX_WORDS:
+        raise ValueError(f"{path.name}: chunks are much larger than MAX_WORDS")
 
+    collection.upsert(
+        documents=chunks,
+        ids=[f"{path.name}-{i}"for i in range(len(chunks))],
+        metadatas=[{"source": path.name} for _ in chunks],
+    )
+    total_chunks += len(chunks)
 
-chunks = chunk_lines(text, MAX_WORDS, OVERLAP_LINES)
-
-sizes = [len(c.split()) for c in chunks]
-print(f"{len(chunks)} chunks; words min/avg/max: "
-      f"{min(sizes)}/{round(sum(sizes) / len(sizes))}/{max(sizes)}")
-if sum(sizes) / len(sizes) > 1.5 * MAX_WORDS:
-    raise ValueError("chunks are much larger than MAX_WORDS: check chunker arguments")
-
-collection.upsert(
-    documents=chunks,
-    ids=[f"{path.name}-{i}" for i in range(len(chunks))],
-    metadatas=[{"source": path.name} for _ in chunks],
-)
-print(len(chunks), "chunks stored; collection count:", collection.count())
+print(f"{len(files)} files, {total_chunks} chunk stored; collection count: {collection.count()}")

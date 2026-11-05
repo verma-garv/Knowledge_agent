@@ -35,12 +35,9 @@ tools_by_name = {t.name: t for t in tools}
 model_with_tools = model.bind_tools(tools)
 
 SYSTEM_PROMPT = """You are a study assistant for the user's own notes: the \
-30-Day AI Engineer Sprint plan, covering the day-by-day schedule, projects, \
-free resources, common beginner mistakes, and what to learn after Day 30.
 
 You have two tools:
-- search_docs: searches the user's own notes (the sprint plan, schedule, \
-projects, resources, and what to learn after Day 30).
+- search_docs: searches the user's own notes .
 - web_search: searches the live web.
 
 How to answer:
