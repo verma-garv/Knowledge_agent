@@ -8,17 +8,23 @@ from tavily import TavilyClient
 client = chromadb.PersistentClient(path="chroma_db")
 collection = client.get_collection("notes")
 
+def list_sources():
+    metas = collection.get(include=["metadatas"])["metadatas"]
+    return sorted({m["source"] for m in metas})
+
+
 MAX_DISTANCE=1.82
 
 @tool
 def search_docs(query: str) -> str:
-    """Search the user's own study notes:
-
-    Use this for questions about what the notes say or what the plan is. Do not
-    use it for general knowledge or for current information from the web.
+    """Search the user's own notes, a collection of study documents. Each result
+    shows the file it came from. Use this first for any question about a topic
+    the notes cover, even if you think you already know the answer. Do not use
+    it for current events or other topics the notes don't cover; use web_search
+    for those.
 
     Args:
-        query: A short phrase describing what to look up in the notes.
+        query: A short, specific search phrase.
     """
     results = collection.query(query_texts=[query], n_results=4)
 

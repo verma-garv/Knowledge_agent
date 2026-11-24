@@ -17,7 +17,7 @@ from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import Annotated, TypedDict
 
-from tools import search_docs, web_search
+from tools import list_sources, search_docs, web_search
 
 load_dotenv()
 
@@ -34,15 +34,17 @@ tools = [search_docs, web_search]
 tools_by_name = {t.name: t for t in tools}
 model_with_tools = model.bind_tools(tools)
 
-SYSTEM_PROMPT = """You are a study assistant for the user's own notes: the \
+SYSTEM_PROMPT = """You are a study assistant for the user's own notes, a collection of documents.
+The available files are listed below. Their names show their topics.
 
 You have two tools:
 - search_docs: searches the user's own notes .
 - web_search: searches the live web.
 
 How to answer:
-1. For questions about what the notes say or what the plan is, call \
-search_docs first. Do not answer them from memory.
+1. For any question about a topic the notes cover, call search_docs first, \
+even if you could answer from memory. Do not answer such questions from \
+memory.
 2. For questions about current events, the latest version of something, or \
 facts clearly outside the notes, call web_search.
 3. Simple, stable general knowledge (like the capital of a country) can be \
@@ -115,6 +117,11 @@ def with_date(prompt):
     return (f"Today's date is {today}. Your own knowledge may be out of " f"date for anything recent.\n\n" + prompt)
 
 
+def notes_line():
+    names = ", ".join(list_sources())
+    return f"Available notes: {names}\n\n"
+
+
 def llm_node(state: AgentState):
     if searches_this_turn(state["messages"]) >= MAX_SEARCHES:
         question, passages = question_and_passages(state["messages"])
@@ -133,7 +140,7 @@ def llm_node(state: AgentState):
             print(f"[final-answer call failed: {e}]")
             response = AIMessage(content=f"[error] final-answer call failed: {e}")
     else:
-        msgs = [SystemMessage(content=with_date(SYSTEM_PROMPT))] + state["messages"]
+        msgs = [SystemMessage(content=with_date(SYSTEM_PROMPT) + notes_line())] + state["messages"]
         try:
             response = model_with_tools.invoke(msgs)
         except Exception as e:
