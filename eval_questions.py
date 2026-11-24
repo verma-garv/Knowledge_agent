@@ -7,7 +7,12 @@ from agent import agent, provider
 
 CASES = [
     # (question, keywords that must all appear, should the tool be called?, known-failure reason or None)
-    ("What is routing", ["routing"], True, None)
+    ("What are the three steps of the handshake?", ["syn", "ack"], True, None),
+    ("Which port does HTTPS use?", ["443"], True, None),
+    ("What does a 429 status code mean?", ["too many requests"], True, None),
+    ("What stopping conditions can end an agent loop", ["timeout", "budget"], True, None),
+    ("What does quantization do?", ["precision"], True, None),
+    ("What is routing", ["routing"], True, None),
     ("What is the capital of France?", ["paris"], False, None),
     ("What is the latest stable version of Python?", ["3.15"], True, None),
 ]
