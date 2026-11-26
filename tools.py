@@ -1,15 +1,22 @@
 import os
 
 import chromadb
+from chromadb.errors import NotFoundError
 from dotenv import load_dotenv
 from langchain.tools import tool
 from tavily import TavilyClient
 
 client = chromadb.PersistentClient(path="chroma_db")
-collection = client.get_collection("notes")
+
+def get_notes():
+    return client.get_collection("notes")     # looked up per call, so re-ingest can't break it
+
 
 def list_sources():
-    metas = collection.get(include=["metadatas"])["metadatas"]
+    try:
+        metas = get_notes().get(include=["metadatas"])["metadatas"]
+    except NotFoundError:
+        return []
     return sorted({m["source"] for m in metas})
 
 
@@ -26,7 +33,10 @@ def search_docs(query: str) -> str:
     Args:
         query: A short, specific search phrase.
     """
-    results = collection.query(query_texts=[query], n_results=4)
+    try:
+        results = get_notes().query(query_texts=[query], n_results=4)
+    except NotFoundError:
+        return "The notes collection doesn't exist yet. Run ingest.py first."
 
     docs = results["documents"][0]
     metas = results["metadatas"][0]
@@ -56,7 +66,7 @@ def web_search(query: str) -> str:
     user's notes, such as recent events, the latest version of a tool, or general
     knowledge.
 
-    Do not use this for questions about the user's own study plan or notes. Use
+    Do not use this for questions about the user's own the topics in the notes. Use
     search_docs for those.
 
     Args:

@@ -34,10 +34,11 @@ tools = [search_docs, web_search]
 tools_by_name = {t.name: t for t in tools}
 model_with_tools = model.bind_tools(tools)
 
-SYSTEM_PROMPT = """You are a study assistant for the user's own notes, a collection of documents.
-The available files are listed below. Their names show their topics.
+SYSTEM_PROMPT = """You are a study assistant for the user's own notes, a collection of documents. \
+The available files are listed at the end of these instructions.
+
 You have two tools:
-- search_docs: searches the user's own notes .
+- search_docs: searches the user's own notes.
 - web_search: searches the live web.
 
 How to answer:
@@ -46,8 +47,11 @@ even if you could answer from memory. Do not answer such questions from \
 memory.
 2. For questions about current events, the latest version of something, or \
 facts clearly outside the notes, call web_search.
-3. Simple, stable general knowledge (like the capital of a country) can be \
-answered directly without a tool.
+3. Answer directly without a tool only for general knowledge about topics the \
+notes do not cover, such as geography or everyday facts (example: the capital \
+of France). If a question touches any topic in the available notes, rule 1 \
+wins: search first, even for simple facts like a port number or a definition \
+(example: which port HTTPS uses).
 4. Each passage comes with a distance. A smaller distance means a closer match, but distance is only a hint. Read the passage itself and decide whether it actually answers the question. A passage with a large distance can still contain the answer, and a small distance does not guarantee it.
 5. If the first search doesn't answer the question, you may search once \
 more with different content words, using either tool. After two searches, \
@@ -117,34 +121,47 @@ def with_date(prompt):
 
 
 def notes_line():
-    names = ", ".join(list_sources())
-    return f"Available notes: {names}\n\n"
+    names = list_sources()
+    if not names:
+        return ("\n\nNo notes are loaded yet. If the user asks about their notes, "
+                "tell them to run ingest.py.\n\n")
+    return f"\n\nAvailable notes: {', '.join(names)}\n\n"
+
+
+def forced_answer(state: AgentState):
+    question, passages = question_and_passages(state["messages"])
+    msgs = [
+        SystemMessage(content=with_date(FORCED_SYSTEM_PROMPT)),
+        HumanMessage(content=(
+            f"Question: {question}\n\n"
+            f"Passages:\n{passages}\n\n"
+            "Answer the question using only these passages."
+        )),
+    ]
+    try:
+        print(f"[forced answer: {len(passages.split())} words of passages]")
+        return model.invoke(msgs)
+    except Exception as e:
+        print(f"[final-answer call failed: {e}]")
+        return AIMessage(content=f"[error] final-answer call failed: {e}")
 
 
 def llm_node(state: AgentState):
-    if searches_this_turn(state["messages"]) >= MAX_SEARCHES:
-        question, passages = question_and_passages(state["messages"])
-        msgs = [
-            SystemMessage(content=with_date(FORCED_SYSTEM_PROMPT)),
-            HumanMessage(content=(
-                f"Question: {question}\n\n"
-                f"Passages:\n{passages}\n\n"
-                "Answer the question using only these passages."
-            )),
-        ]
-        try:
-            print(f"[forced answer: {len(passages.split())} words of passages]")
-            response = model.invoke(msgs)
-        except Exception as e:
-            print(f"[final-answer call failed: {e}]")
-            response = AIMessage(content=f"[error] final-answer call failed: {e}")
-    else:
-        msgs = [SystemMessage(content=with_date(SYSTEM_PROMPT) + notes_line())] + state["messages"]
-        try:
-            response = model_with_tools.invoke(msgs)
-        except Exception as e:
-            print(f"[tool call invalid: {e}]")
-            response = AIMessage(content=f"[error] tool call invalid: {e}")
+    searched = searches_this_turn(state["messages"])
+    if searched >= MAX_SEARCHES:
+        return {"messages": [forced_answer(state)]}
+
+    msgs = [SystemMessage(content=with_date(SYSTEM_PROMPT) + notes_line())] + state["messages"]
+    try:
+        response = model_with_tools.invoke(msgs)
+    except BadRequestError as e:
+        if "tool_use_failed" not in str(e):
+            raise                    # a different 400 is a real bug: don't hide it
+        print(f"[invalid tool call: {e}]")
+        if searched >= 1:
+            response = forced_answer(state)     # answer from what was already found
+        else:
+            response = AIMessage(content=f"[error] the model made an invalid tool call: {e}")
     return {"messages": [response]}
 
 
